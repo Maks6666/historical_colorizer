@@ -1,7 +1,7 @@
 from os import listdir
 import time
 from skimage.color import rgb2lab
-from models import first_model
+from models import first_model, second_model
 import torch
 from PIL import Image
 import os
@@ -17,12 +17,20 @@ device = "mps" if torch.backends.mps.is_available() else "cpu"
 
 
 class ColorizerApp:
-    def __init__(self, model, image, dir_to_save):
+    def __init__(self, image, dir_to_save, model_marker):
         self.device = "mps" if torch.backends.mps.is_available() else "cpu"
         self.dir_to_save = dir_to_save
-        self.model = model
+        self.model_marker = model_marker
+        self.model = self.load_model()
         self.image = image
         self.transforms = transforms.Resize((256, 256))
+
+
+    def load_model(self):
+        if self.model_marker == "1":
+            return first_model()
+        elif self.model_marker == "2":
+            return second_model()
 
     def output_result(self):
         idx = len(os.listdir(self.dir_to_save))+1
@@ -53,7 +61,7 @@ class ColorizerApp:
 
             res = (res * 255).astype(np.uint8)
             res = cv2.resize(res, (width, height))
-
+            res = cv2.cvtColor(res, cv2.COLOR_BGR2RGB)
 
             path = os.path.join(self.dir_to_save, f"{idx}.jpg")
 
@@ -65,14 +73,14 @@ class ColorizerApp:
 
             return res
 
-model = first_model()
+# model = first_model()
 
 root_dir = "grayscaled_images"
 image = choose_file(root_dir)
 dir_to_save = "colorized_images"
 
 
-colorizer = ColorizerApp(model, image, dir_to_save)
+colorizer = ColorizerApp(image, dir_to_save, "1")
 image = colorizer.output_result()
 
 
