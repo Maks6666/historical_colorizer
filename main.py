@@ -1,7 +1,7 @@
 from os import listdir
 import time
 from skimage.color import rgb2lab
-from models import first_model, second_model
+from models import first_model, second_model, third_model, fourth_model, fifth_model
 import torch
 from PIL import Image
 import os
@@ -23,7 +23,12 @@ class ColorizerApp:
         self.model_marker = model_marker
         self.model = self.load_model()
         self.image = image
-        self.transforms = transforms.Resize((256, 256))
+        self.transforms = transforms.Compose([
+            transforms.Resize((256, 256)),
+            transforms.ToTensor()
+        ])
+
+
 
 
     def load_model(self):
@@ -31,6 +36,13 @@ class ColorizerApp:
             return first_model()
         elif self.model_marker == "2":
             return second_model()
+        elif self.model_marker == "3":
+            return third_model()
+        elif self.model_marker == "4":
+            return fourth_model()
+        elif self.model_marker == "5":
+            return fifth_model()
+
 
     def output_result(self):
         idx = len(os.listdir(self.dir_to_save))+1
@@ -45,8 +57,8 @@ class ColorizerApp:
             width, height = image.size
 
             image = self.transforms(image)
-            image = np.array(image)
-
+            image = image.permute(1, 2, 0).cpu().numpy()
+            print(image.shape)
             lab_img = color.rgb2lab(image)
 
             l_channel = lab_img[:, :, 0] / 100.0
@@ -59,11 +71,18 @@ class ColorizerApp:
             self.model.to(self.device)
             res = self.model.predict(l_channel)
 
-            res = (res * 255).astype(np.uint8)
+            if len(res.shape) == 4:
+                res = res.squeeze(0)
+
+            if np.max(res) <= 1:
+                res = (res * 255).astype(np.uint8)
+
             res = cv2.resize(res, (width, height))
-            res = cv2.cvtColor(res, cv2.COLOR_BGR2RGB)
+            res = cv2.cvtColor(res, cv2.COLOR_RGB2BGR)
 
             path = os.path.join(self.dir_to_save, f"{idx}.jpg")
+
+            # l_channel = np.clip(l_channel * 255, 0, 255).astype(np.uint8)
 
             cv2.imwrite(path, res)
 
@@ -80,7 +99,7 @@ image = choose_file(root_dir)
 dir_to_save = "colorized_images"
 
 
-colorizer = ColorizerApp(image, dir_to_save, "1")
+colorizer = ColorizerApp(image, dir_to_save, "2")
 image = colorizer.output_result()
 
 
