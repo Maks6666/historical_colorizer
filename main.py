@@ -1,7 +1,7 @@
 from os import listdir
 import time
 from skimage.color import rgb2lab
-from models import first_model, second_model, third_model, fourth_model, fifth_model
+from models import teacher_model, student_model, additional_model
 import torch
 from PIL import Image
 import os
@@ -24,7 +24,7 @@ class ColorizerApp:
         self.model = self.load_model()
         self.image = image
         self.transforms = transforms.Compose([
-            transforms.Resize((256, 256)),
+            transforms.Resize((384, 384)),
             transforms.ToTensor()
         ])
 
@@ -32,16 +32,12 @@ class ColorizerApp:
 
 
     def load_model(self):
-        if self.model_marker == "1":
-            return first_model()
-        elif self.model_marker == "2":
-            return second_model()
-        elif self.model_marker == "3":
-            return third_model()
-        elif self.model_marker == "4":
-            return fourth_model()
-        elif self.model_marker == "5":
-            return fifth_model()
+        if self.model_marker == "s":
+            return student_model()
+        elif self.model_marker == "l":
+            return teacher_model()
+        elif self.model_marker == "A":
+            return additional_model()
 
 
     def output_result(self):
@@ -99,7 +95,7 @@ image = choose_file(root_dir)
 dir_to_save = "colorized_images"
 
 
-colorizer = ColorizerApp(image, dir_to_save, "2")
+colorizer = ColorizerApp(image, dir_to_save, "l")
 image = colorizer.output_result()
 
 
