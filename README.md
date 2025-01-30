@@ -5,7 +5,8 @@
 Being obsessed as with history, as with programming I was always interesting in finding a way to make old gray photos 
 colorized. Such neural network type as autoencoder provides such possibility, so I decided to research this topic. 
 Previously, I already realized a model for gray image colorization with Tensorflow model, but this one must work much 
-better because a lot of improvements, which were provided using PyTorch framework.
+better because a lot of improvements, which were provided using PyTorch framework. Moreover, an image dataset for there models, 
+which contains more that 12.000 images, I collected by myself. 
 
 ### LAB-Apporach 
 
@@ -269,11 +270,162 @@ Student model parameters:
 
 ![student_info.png](content%20/student_info.png)
 
+And as a result, losses of both models, look pretty good, which is actually proved by not bad performance of both models:
+![losses.png](content%20/losses.png)
+
 More information about training process is available in 'correct_colorizer_training.ipynb' file.
 
 ### Metrics 
 
+During both models training, I used two metrics, except MSE, to control an accuracy of image colorization - PSNR and SSIM:
+- PSNR (peak signal-to-noise ratio) - metric, which calculates differance between two images - original one 
+(grayscale image of l_channel in this case) and one, returned by neural network (colorized one):
+
+```
+PSNR = 10 * log(10) * (MAX^2 / MSE)
+```
+where:
+MAX^2 - maximum value of pixels (1 in case, when they are normalized in -1-1 range)
+MSE - mean squared error between original images and predicted one. 
+
+In my case I applied PSNR to find a similarity between predicted AB channels and original ones and that works pretty well in both models.
+It was necessary only to specify, that my data_range of PSNR is equal to 2. PSNR values for my models:
+
+![psnr.png](content%20/psnr.png)
+
+
+- SSIM (structural similarity index measure) - metrics, which is able to calculate differance between images 
+taking into account an interpretation ob image by human-eye. Unlike PSNR, which just calculate differance between each pixel, 
+SSIM is able to consider structural differance between images. In other worlds it is able to evaluate whole image - not just each pixel separately. 
+It works with a next formula:
+
+![ssim.png](content%20/ssim.png)
+
+
+Where:
+
+1) μx, μy - mean values of brightness of some windows (local areas) of images x and y. They could be found this way:
+```
+μ_n = 1/N ∑(I_n)
+
+# I_n - is a value of each pixel in window
+# N - amount of pixels in window
+
+# for example, having n image of size 2x2:
+
+# [10, 20,
+# 30, 40]
+
+# μ_n will be:
+
+# (10 + 20 + 30 + 40) / 4 = 100 / 4 = 25 
+
+# But if we've got an image of size 16x16, and size of window will be manually setted as 4x4, each 4x4 area will be a 
+# a window (local area) - in this case we need to calculate μ of each window and find their mean value. 
+```
+
+2) σx, σy - mean dispersion (contrast) of all windows (local areas). They could be found this way: 
+```
+σ_n = 1/N ∑(I_n - μ_n)^2
+
+# I_n - value of each pixel in window 
+# μ_n - mean value of brightness in a correspondent window
+# N - amount of pixels in window
+
+# In the same way, if you've got a window n of size:
+
+# [10, 20,
+# 30, 40]
+
+# σ_n = ((10 - 25)^2 + (20 - 25)^2 + (30 - 25)^2 + (40 - 25)^2) / 4 = (225 + 25 + 25 + 225) / 4 = 125
+
+# And in the same way, if you've got several windows with specific sizes, then you need to calculate 
+# σ of each of them and and find a mean value. 
+```
+3) σx_y = covariation between x and y images, which calculates structural similarity between images x and y.
+It calculates this way:
+
+```
+σx_y = 1/N ∑(I_x - μ_x) * (I_y - μ_y)
+
+# I_x - value of each pixel in x image specified window
+# μ_x - mean value of brigntness in x specified windown
+
+# I_y - value of each pixel in y image specified window
+# μ_y - mean value of brigntness in y specified windown
+
+#N - amount of pixel in each of both windows
+
+# In a similar way, if you've got two images - x and y with a same size:
+
+# [10, 20,
+# 30, 40]
+
+# σx_y = ((10 - 25) * (10 - 25)) + ((20 - 25) * (20 - 25)) + ((30 - 25) * (30 - 25)) + ((40 - 25) * (40 - 25)) / 4 =
+# = (225 + 25 + 25 + 225) / 4 = 125
+
+# And in the same way, if you've got several windows with specific sizes, then you need to calculate 
+# σx_y of each of them and and find a mean value.
+```
+
+4) C1, C2 - small values, which prevent zero division. Usually:
+```
+C1 = (0.01 * L)^2
+C2 = (0.03 * L)^2
+
+# Where L - is maximum pixel value.
+```
+
+IMPORTANT: SSIM accepts only 1D values, so in my case, during applying metrics on predicted and true AB channels, 
+which are actually 2D data, i find mean values between predicted and true A and B channels and only then fit it to the
+SSIM:
+
+```
+preds_np = preds.cpu().detach().numpy()
+y_np = y.cpu().detach().numpy()
+
+# here it means that preds_np shape is: (B, C, H, W), so C - channel is under index 1
+
+if preds_np.shape[1] > 1:  
+   preds_np = preds_np.mean(axis=1) 
+   y_np = y_np.mean(axis=1)
+            
+   t_ssim = ssim(preds_np.squeeze(), y_np.squeeze(), win_size=7, data_range=2.0)
+```
+SSIM values for my models: 
+
+![ssim2.png](content%20/ssim2.png)
 
 ### Deployment
+You may test both models by yourself with the main.py file. All you need to do is only to put gray images you'd like to colorize, 
+choose model with a latter in string:
 
+```
+colorizer = ColorizerApp(image, dir_to_save, "l")'
+```
+
+where 'l' means 'large', so a teacher model, and 's' means 'small', so a student model. Directory to save colorized 
+image is specified by default as 'colorized_image' - of course you may change it path if it is necessary. To start colorization process, 
+as I said, you need to run a file, then input an index of an image you'd like to colorized, which will be displayed in a terminal. 
+After input, program will open image with PIL, resize it with torchvision.transforms, put into specific size, extract l_channel
+in above mentioned way and pass it through model. Method predict will automatically combine ab and l channels into single image and 
+turn it to "RGB" format, so you will be able to find it's colorized version in 'colorized_image' folder. 
+
+### Addition
+
+This project also includes one more model, which could be called with "A" so an additional one instead of 'l' or 's'.
+The specific of this model is, that it has a sigmoid() function on the output layer instead of tanh(), so it return's
+a/b channels in range of 0 and 1. And despite being wrong from theoretical point of view, this model also is available and 
+I must admit, that this one works really not bad. For more additional information about it, you could check file "colorized_training.ipynb".
+Other methodic in this one is similar as in above mentioned models.
+
+### Video colorization
+
+The following update of this project will include video files colorization with same models. So to be continued in the nearest time...
+
+
+Thanks for attention!
+
+### Autors:
+- Kucher Maks (maxim.kucher2005@gmail.com / Telegramm (for contacts): @aeternummm)
 
