@@ -420,9 +420,11 @@ I must admit, that this one works really not bad. For more additional informatio
 Other methodic in this one is similar as in above mentioned models.
 
 ### Video colorization
-
-The following update of this project will include video files colorization with same models. So to be continued in the nearest time...
-
+This program is also able to adapt colorization models for video files colorization. To do that, you just need to specify model type by 
+same model marker as in main.py: l - for teacher model, s - for student mode, a - for additional model. Then, run a file and the same way 
+as for main.py, choose video, you'd like to colorize from 'grayscaled_videos' folder by input it's index. This video will be splitted into separate frames, which will be turned into dataset and dataloader
+to be passed through the model. Model will colorized each of separated frames. Results in tensor form will be saved to an array and then will be written 
+into new video file using cv2.VideoWriter() method. Colorized video will be saved in .mp4 format into 'colorized_videos' folder.
 
 Thanks for attention!
 

@@ -154,21 +154,20 @@ class СolorizerV2(nn.Module):
             ab_channels = self.forward(l_channel)
 
         l_channel = l_channel.squeeze(0).cpu().numpy()
-
+        # print(l_channel.shape)
         a_channel = ab_channels[:, 0, :, :].cpu().numpy()
         b_channel = ab_channels[:, 1, :, :].cpu().numpy()
 
-        # print(a_channel.shape, b_channel.shape, l_channel.shape)
         l_channel = np.clip(l_channel * 100, 0, 100).astype(np.uint8)
         a_channel = np.clip(a_channel * 128, -128, 127).astype(np.int8)
         b_channel = np.clip(b_channel * 128, -128, 127).astype(np.int8)
 
-        lab_img = np.stack([l_channel, a_channel, b_channel], axis=-1).astype(np.float32)
-        rgb_image = color.lab2rgb(lab_img)
+        # print(l_channel.shape, a_channel.shape, b_channel.shape)
+        lab_img = np.stack([l_channel, a_channel, b_channel], axis=-1).astype(np.float64)
+        rgb_image = lab2rgb(lab_img)
 
-        rgb_image = np.clip(rgb_image, 0, 1)
-
-        rgb_image = rgb_image.squeeze(0)
+        # if first_way == True:
+        rgb_image = (rgb_image * 255).astype(np.uint8)
 
         return rgb_image
 
@@ -285,32 +284,23 @@ class СolorizerV5(nn.Module):
         with torch.no_grad():
             ab_channels = self.forward(l_channel)
 
-        # print("Shape of output from model:", ab_channels.shape)
-        # print("Min/Max values in ab_channels (before scaling):", ab_channels.min().item(), ab_channels.max().item())
-
         l_channel = l_channel.squeeze(0).cpu().numpy()
+        # print(l_channel.shape)
         a_channel = ab_channels[:, 0, :, :].cpu().numpy()
         b_channel = ab_channels[:, 1, :, :].cpu().numpy()
 
-        # print("Min/Max a_channel (after extraction):", a_channel.min(), a_channel.max())
-        # print("Min/Max b_channel (after extraction):", b_channel.min(), b_channel.max())
 
-        # Масштабируем значения
         l_channel = np.clip(l_channel * 100, 0, 100).astype(np.uint8)
         a_channel = np.clip(a_channel * 128, -128, 127).astype(np.int8)
         b_channel = np.clip(b_channel * 128, -128, 127).astype(np.int8)
 
+        # print(l_channel.shape, a_channel.shape, b_channel.shape)
         lab_img = np.stack([l_channel, a_channel, b_channel], axis=-1).astype(np.float64)
         rgb_image = lab2rgb(lab_img)
 
         # if first_way == True:
         rgb_image = (rgb_image * 255).astype(np.uint8)
-        # # rgb_image = np.clip(rgb_image, 0, 255)
-        # elif second_way == True:
-        #     rgb_image = rgb_image * 255
-        #     rgb_image = np.clip(rgb_image, 0, 255)
 
-        # print("Min/Max RGB image:", rgb_image.min(), rgb_image.max())
 
         return rgb_image
 
@@ -366,20 +356,22 @@ class ColorizerV6(nn.Module):
         self.eval()
 
         with torch.no_grad():
-            ab_channel = self.forward(l_channel)
+            ab_channels = self.forward(l_channel)
 
-        L = l_channel.squeeze(0).squeeze(0).cpu().numpy()
-        AB = ab_channel.squeeze(0).cpu().numpy()
+        l_channel = l_channel.squeeze(0).cpu().numpy()
+        # print(l_channel.shape)
+        a_channel = ab_channels[:, 0, :, :].cpu().numpy()
+        b_channel = ab_channels[:, 1, :, :].cpu().numpy()
 
-        A = AB[0, :, :]
-        B = AB[1, :, :]
+        l_channel = np.clip(l_channel * 100, 0, 100).astype(np.uint8)
+        a_channel = np.clip(a_channel * 128, -128, 127).astype(np.int8)
+        b_channel = np.clip(b_channel * 128, -128, 127).astype(np.int8)
 
-        L = np.clip(L * 100, 0, 100).astype(np.uint8)
-        A = np.clip(A * 128, -128, 127).astype(np.int8)
-        B = np.clip(B * 128, -128, 127).astype(np.int8)
+        # print(l_channel.shape, a_channel.shape, b_channel.shape)
+        lab_img = np.stack([l_channel, a_channel, b_channel], axis=-1).astype(np.float64)
+        rgb_image = lab2rgb(lab_img)
 
-        lab_image = np.stack([L, A, B], axis=-1).astype(np.float64)
-        rgb_image = lab2rgb(lab_image)
+        # if first_way == True:
         rgb_image = (rgb_image * 255).astype(np.uint8)
 
         return rgb_image
@@ -402,10 +394,10 @@ def student_model():
     model.load_state_dict(torch.load("weights/colorizer_s.pt", map_location=device))
     return model
 
-model = additional_model()
-tensor = torch.rand(1, 1, 256, 256)
-res = model.predict(tensor)
-print(res.shape)
+# model = additional_model()
+# tensor = torch.rand(1, 1, 256, 256)
+# res = model.predict(tensor)
+# print(res.shape)
 
 
 

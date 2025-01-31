@@ -1,7 +1,6 @@
 import os
 
 def choose_file(root_dir):
-    root_dir = "grayscaled_images"
     gray_list = os.listdir(root_dir)
 
     for i, obj in enumerate(gray_list):
@@ -10,4 +9,3 @@ def choose_file(root_dir):
     idx = int(input("Choose a file: "))
     path = os.path.join(root_dir, gray_list[idx-1])
     return path
-
