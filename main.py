@@ -95,5 +95,6 @@ image = choose_file(root_dir)
 dir_to_save = "colorized_images"
 
 #
-colorizer = ColorizerApp(image, dir_to_save, "l")
-image = colorizer.output_result()
+# colorizer = ColorizerApp(image, dir_to_save, "l")
+# image = colorizer.output_result()
+
