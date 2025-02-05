@@ -97,5 +97,3 @@ dir_to_save = "colorized_images"
 
 colorizer = ColorizerApp(image, dir_to_save, "l")
 image = colorizer.output_result()
-
-
