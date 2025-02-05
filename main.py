@@ -1,13 +1,16 @@
 from os import listdir
 import time
 from skimage.color import rgb2lab
-from models import teacher_model, student_model, additional_model
+
+from embadding_models import PretrainedModel1
+from models import teacher_model, student_model, additional_model, emb_model_1
 import torch
 from PIL import Image
 import os
 import numpy as np
 from skimage import color
 from torchvision import transforms
+from datasets import custom_image_transformer
 import cv2
 
 from tools import choose_file
@@ -38,7 +41,8 @@ class ColorizerApp:
             return teacher_model()
         elif self.model_marker == "A":
             return additional_model()
-
+        elif self.model_marker == "E":
+            return emb_model_1()
 
     def output_result(self):
         idx = len(os.listdir(self.dir_to_save))+1
@@ -48,24 +52,22 @@ class ColorizerApp:
 
         if os.path.isfile(self.image):
 
-            image = Image.open(self.image).convert('RGB')
-
+            image = Image.open(self.image)
             width, height = image.size
 
-            image = self.transforms(image)
-            image = image.permute(1, 2, 0).cpu().numpy()
-            print(image.shape)
-            lab_img = color.rgb2lab(image)
-
-            l_channel = lab_img[:, :, 0] / 100.0
-
-            l_channel = torch.tensor(l_channel, dtype=torch.float32).unsqueeze(2)
-
-            l_channel = l_channel.permute(2, 0, 1)
-            l_channel = l_channel.unsqueeze(0).to(self.device)
+            img, gray_img = custom_image_transformer(self.image)
 
             self.model.to(self.device)
-            res = self.model.predict(l_channel)
+            pretrained_model = PretrainedModel1()
+            pretrained_model.to(self.device)
+
+            gray_img = gray_img.to(self.device)
+            img = img.to(self.device)
+
+            embadding = pretrained_model.predict(gray_img)
+            print("f")
+            res = self.model.predict(img, embadding)
+            print("x")
 
             if len(res.shape) == 4:
                 res = res.squeeze(0)
@@ -95,6 +97,5 @@ image = choose_file(root_dir)
 dir_to_save = "colorized_images"
 
 #
-# colorizer = ColorizerApp(image, dir_to_save, "l")
-# image = colorizer.output_result()
-
+colorizer = ColorizerApp(image, dir_to_save, model_marker="E")
+colorizer.output_result()
