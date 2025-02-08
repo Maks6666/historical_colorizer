@@ -1,8 +1,6 @@
 from os import listdir
 import time
 from skimage.color import rgb2lab
-
-from embadding_models import PretrainedModel1
 from models import teacher_model, student_model, additional_model, emb_model_1
 import torch
 from PIL import Image
@@ -58,15 +56,14 @@ class ColorizerApp:
             img, gray_img = custom_image_transformer(self.image)
 
             self.model.to(self.device)
-            pretrained_model = PretrainedModel1()
-            pretrained_model.to(self.device)
+
 
             gray_img = gray_img.to(self.device)
             img = img.to(self.device)
 
-            embadding = pretrained_model.predict(gray_img)
+
             print("f")
-            res = self.model.predict(img, embadding)
+            res = self.model.predict(img, gray_img)
             print("x")
 
             if len(res.shape) == 4:
