@@ -1,7 +1,9 @@
 from os import listdir
 import time
 from skimage.color import rgb2lab
-from models import teacher_model, student_model, additional_model, emb_model_1
+from torch.nn.functional import embedding
+
+from models import teacher_model, student_model, additional_model, emb_model_1, EmbeddingExtractorV1
 import torch
 from PIL import Image
 import os
@@ -22,6 +24,7 @@ class ColorizerApp:
         self.device = "mps" if torch.backends.mps.is_available() else "cpu"
         self.dir_to_save = dir_to_save
         self.model_marker = model_marker
+        self.embedding_model = EmbeddingExtractorV1()
         self.model = self.load_model()
         self.image = image
         self.transforms = transforms.Compose([
@@ -56,14 +59,16 @@ class ColorizerApp:
             img, gray_img = custom_image_transformer(self.image)
 
             self.model.to(self.device)
-
+            self.embedding_model.to(self.device)
 
             gray_img = gray_img.to(self.device)
             img = img.to(self.device)
 
+            embedding = self.embedding_model(gray_img)
+
 
             print("f")
-            res = self.model.predict(img, gray_img)
+            res = self.model.predict(img, embedding)
             print("x")
 
             if len(res.shape) == 4:
