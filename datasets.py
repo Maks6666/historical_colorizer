@@ -6,7 +6,7 @@ from skimage.color import rgb2lab, lab2rgb
 from torchvision import transforms
 
 image_transformer = transforms.Compose([
-    transforms.Resize((256, 256)),
+    transforms.Resize((384, 384)),
     transforms.ToTensor()
 ])
 

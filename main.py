@@ -1,9 +1,11 @@
 from os import listdir
 import time
+
+from prompt_toolkit.filters import has_arg
 from skimage.color import rgb2lab
 from torch.nn.functional import embedding
 
-from models import teacher_model, student_model, additional_model, emb_model_1, EmbeddingExtractorV1
+from models import teacher_model, student_model, additional_model, emb_model_2, extractor_1, emb_model_1, extractor_2, extractor_3
 import torch
 from PIL import Image
 import os
@@ -13,18 +15,18 @@ from torchvision import transforms
 from datasets import custom_image_transformer
 import cv2
 
-from tools import choose_file
+from tools import choose_file, has_arg
 
 
 device = "mps" if torch.backends.mps.is_available() else "cpu"
 
 
 class ColorizerApp:
-    def __init__(self, image, dir_to_save, model_marker):
+    def __init__(self, image, dir_to_save, model_marker, extractor):
         self.device = "mps" if torch.backends.mps.is_available() else "cpu"
         self.dir_to_save = dir_to_save
         self.model_marker = model_marker
-        self.embedding_model = EmbeddingExtractorV1()
+        self.embedding_extractor = extractor
         self.model = self.load_model()
         self.image = image
         self.transforms = transforms.Compose([
@@ -36,18 +38,15 @@ class ColorizerApp:
 
 
     def load_model(self):
-        if self.model_marker == "s":
-            return student_model()
-        elif self.model_marker == "l":
-            return teacher_model()
-        elif self.model_marker == "A":
-            return additional_model()
-        elif self.model_marker == "E":
+        if self.model_marker == "1":
             return emb_model_1()
+        elif self.model_marker == "2":
+            return emb_model_2()
 
     def output_result(self):
         idx = len(os.listdir(self.dir_to_save))+1
         os.makedirs(self.dir_to_save, exist_ok=True)
+
 
         start = time.time()
 
@@ -59,12 +58,25 @@ class ColorizerApp:
             img, gray_img = custom_image_transformer(self.image)
 
             self.model.to(self.device)
-            self.embedding_model.to(self.device)
+            emd_model = self.embedding_extractor()
+            emd_model.to(self.device)
 
             gray_img = gray_img.to(self.device)
             img = img.to(self.device)
 
-            embedding = self.embedding_model(gray_img)
+            # embedding = emd_model(gray_img, return_emb=True)
+            # if has_arg(emd_model, 'return_emb') == True:
+            #     embedding = emd_model(gray_img, return_emb=True)
+            # else:
+            #     embedding = emd_model(gray_img)
+            #
+
+            try:
+                print("Embedding returned")
+                embedding = emd_model(gray_img, return_emb=True)
+            except RuntimeError:
+                embedding = emd_model(gray_img)
+
 
 
             print("f")
@@ -98,6 +110,6 @@ root_dir = "grayscaled_images"
 image = choose_file(root_dir)
 dir_to_save = "colorized_images"
 
-#
-colorizer = ColorizerApp(image, dir_to_save, model_marker="E")
+
+colorizer = ColorizerApp(image, dir_to_save, model_marker="1", extractor=extractor_3)
 colorizer.output_result()

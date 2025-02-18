@@ -1,4 +1,5 @@
 import os
+import inspect
 
 def choose_file(root_dir):
     gray_list = os.listdir(root_dir)
@@ -9,3 +10,6 @@ def choose_file(root_dir):
     idx = int(input("Choose a file: "))
     path = os.path.join(root_dir, gray_list[idx-1])
     return path
+
+def has_arg(func, arg_name):
+    return arg_name in inspect.signature(func).parameters
