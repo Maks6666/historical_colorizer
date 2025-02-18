@@ -1,7 +1,7 @@
 import cv2
 import torch
 from torchvision import transforms
-from video_dataset import CustomVideoDataset
+from datasets import CustomVideoDataset
 from torch.utils.data import DataLoader
 from models import teacher_model, student_model, additional_model
 
