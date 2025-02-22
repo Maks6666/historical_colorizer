@@ -5,7 +5,7 @@ from prompt_toolkit.filters import has_arg
 from skimage.color import rgb2lab
 from torch.nn.functional import embedding
 
-from models import teacher_model, student_model, additional_model, emb_model_2, extractor_1, emb_model_1, extractor_2, extractor_3
+from models import emb_model_2, extractor_1, emb_model_1, extractor_2, extractor_3, emb_model_3
 import torch
 from PIL import Image
 import os
@@ -42,6 +42,8 @@ class ColorizerApp:
             return emb_model_1()
         elif self.model_marker == "2":
             return emb_model_2()
+        elif self.model_marker == "3":
+            return emb_model_3()
 
     def output_result(self):
         idx = len(os.listdir(self.dir_to_save))+1
@@ -111,5 +113,5 @@ image = choose_file(root_dir)
 dir_to_save = "colorized_images"
 
 
-colorizer = ColorizerApp(image, dir_to_save, model_marker="1", extractor=extractor_3)
+colorizer = ColorizerApp(image, dir_to_save, model_marker="3", extractor=extractor_3)
 colorizer.output_result()

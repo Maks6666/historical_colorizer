@@ -5,7 +5,7 @@ import numpy as np
 from skimage import color
 from skimage.color import lab2rgb, rgb2lab
 from torchvision import models
-from embadding_models import PretrainedModel1
+
 
 
 device = "mps" if torch.backends.mps.is_available() else "cpu"
@@ -1235,26 +1235,358 @@ class EmbeddingExtractorV3(nn.Module):
         return out
 
 
+# class SEBlock(nn.Module):
+#     def __init__(self, C, r=16):
+#         super().__init__()
+#
+#         self.aap = nn.AdaptiveAvgPool2d((1, 1))
+#         self.flatten = nn.Flatten()
+#
+#         self.linear1 = nn.Linear(C, C // r)
+#         self.linear2 = nn.Linear(C // r, C)
+#
+#         self.relu = nn.ReLU()
+#         self.sigmoid = nn.Sigmoid()
+#
+#     def forward(self, x):
+#         out = self.aap(x)
+#         out = self.flatten(out)
+#
+#         out = self.relu(self.linear1(out))
+#         out = self.sigmoid(self.linear2(out))
+#
+#         out = out[:, :, None, None]
+#
+#         res = out * x
+#         return res
+#
+#
+# class SE_ResBlock(nn.Module):
+#     def __init__(self, inputs, outputs, kernel, stride):
+#         super().__init__()
+#
+#         self.conv1 = nn.Sequential(
+#             nn.Conv2d(inputs, outputs, kernel_size=kernel, stride=stride, padding=1),
+#             nn.BatchNorm2d(outputs),
+#         )
+#
+#         self.conv2 = nn.Sequential(
+#             nn.Conv2d(outputs, outputs, kernel_size=3, stride=1, padding=1),
+#             nn.BatchNorm2d(outputs),
+#         )
+#
+#         if inputs != outputs:
+#             self.add_conv = nn.Sequential(
+#                 nn.Conv2d(inputs, outputs, kernel_size=kernel, stride=stride, padding=1),
+#                 nn.BatchNorm2d(outputs),
+#             )
+#
+#         self.se_block = SEBlock(outputs)
+#
+#     def forward(self, x):
+#         out = self.conv1(x)
+#         add_out = self.add_conv(x)
+#
+#         out = F.leaky_relu(out)
+#         out = self.conv2(out)
+#         out = self.se_block(out)
+#
+#         out += add_out
+#
+#         out = F.leaky_relu(out)
+#
+#         return out
 
 
+class ColorizerV9(nn.Module):
+    def __init__(self, inputs=1, outputs=2):
+        super().__init__()
+
+        self.conv1 = SE_ResBlock(inputs, 32, kernel=4, stride=2)
+        self.conv2 = SE_ResBlock(32, 64, kernel=4, stride=2)
+        self.conv3 = SE_ResBlock(64, 128, kernel=4, stride=2)
+        self.conv4 = SE_ResBlock(128, 256, kernel=4, stride=2)
+
+        self.conv5 = nn.Sequential(
+            nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=2, dilation=2),
+            nn.BatchNorm2d(512),
+            nn.LeakyReLU()
+        )
+
+        # self.emb = nn.Sequential(
+        #     SE_ResBlock(1024, 512, kernel=3, stride=1),
+        # )
+
+        self.conv6 = nn.Sequential(
+            nn.Conv2d(512, 256, kernel_size=3, stride=1, padding=2, dilation=2),
+            nn.BatchNorm2d(256),
+            nn.LeakyReLU()
+        )
+
+        self.t_conv1 = nn.Sequential(
+            nn.ConvTranspose2d(512, 128, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(128),
+            nn.LeakyReLU()
+        )
+        self.t_conv2 = nn.Sequential(
+            nn.ConvTranspose2d(256, 64, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(64),
+            nn.LeakyReLU()
+        )
+
+        self.t_conv3 = nn.Sequential(
+            nn.ConvTranspose2d(128, 32, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(32),
+            nn.LeakyReLU()
+        )
+
+        self.t_conv4 = nn.Sequential(
+            nn.ConvTranspose2d(64, 2, kernel_size=4, stride=2, padding=1),
+            nn.LeakyReLU()
+        )
+        self.t_conv5 = nn.ConvTranspose2d(3, outputs, kernel_size=3, stride=1, padding=1)
+
+        self.linear_block = nn.Sequential(
+            nn.LeakyReLU(),
+            nn.Linear(2048, 512)
+        )
+
+        # ----------------------------------------------------------------------------------------------------------------
+
+        self.conv2_1 = SE_ResBlock(inputs, 32, kernel=4, stride=2)
+        self.conv2_2 = SE_ResBlock(32, 64, kernel=4, stride=2)
+        self.conv2_3 = SE_ResBlock(64, 128, kernel=4, stride=2)
+        self.conv2_4 = SE_ResBlock(128, 256, kernel=4, stride=2)
+
+        self.conv2_5 = nn.Sequential(
+            nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=2, dilation=2),
+            nn.BatchNorm2d(512),
+            nn.LeakyReLU()
+        )
+
+        # self.emb = nn.Sequential(
+        #     SE_ResBlock(1024, 512, kernel=3, stride=1),
+        # )
+
+        self.conv2_6 = nn.Sequential(
+            nn.Conv2d(512, 256, kernel_size=3, stride=1, padding=2, dilation=2),
+            nn.BatchNorm2d(256),
+            nn.LeakyReLU()
+        )
+
+        self.t_conv2_1 = nn.Sequential(
+            nn.ConvTranspose2d(512, 128, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(128),
+            nn.LeakyReLU()
+        )
+        self.t_conv2_2 = nn.Sequential(
+            nn.ConvTranspose2d(256, 64, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(64),
+            nn.LeakyReLU()
+        )
+
+        self.t_conv2_3 = nn.Sequential(
+            nn.ConvTranspose2d(128, 32, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(32),
+            nn.LeakyReLU()
+        )
+
+        self.t_conv2_4 = nn.Sequential(
+            nn.ConvTranspose2d(64, 2, kernel_size=4, stride=2, padding=1),
+            nn.LeakyReLU()
+        )
+        self.t_conv2_5 = nn.ConvTranspose2d(3, outputs, kernel_size=3, stride=1, padding=1)
+
+        # ------------------------------------------------------------------------------------
+
+        self.conv3_1 = SE_ResBlock(4, 32, kernel=4, stride=2)
+        self.conv3_2 = SE_ResBlock(32, 64, kernel=4, stride=2)
+        self.conv3_3 = SE_ResBlock(64, 128, kernel=4, stride=2)
+        self.conv3_4 = SE_ResBlock(128, 256, kernel=4, stride=2)
+
+        self.conv3_5 = nn.Sequential(
+            nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=2, dilation=2),
+            nn.BatchNorm2d(512),
+            nn.LeakyReLU()
+        )
+
+        self.conv3_6 = nn.Sequential(
+            nn.Conv2d(512, 256, kernel_size=3, stride=1, padding=2, dilation=2),
+            nn.BatchNorm2d(256),
+            nn.LeakyReLU()
+        )
+
+        self.t_conv3_1 = nn.Sequential(
+            nn.ConvTranspose2d(512, 128, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(128),
+            nn.LeakyReLU()
+        )
+        self.t_conv3_2 = nn.Sequential(
+            nn.ConvTranspose2d(256, 64, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(64),
+            nn.LeakyReLU()
+        )
+
+        self.t_conv3_3 = nn.Sequential(
+            nn.ConvTranspose2d(128, 32, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(32),
+            nn.LeakyReLU()
+        )
+
+        self.t_conv3_4 = nn.Sequential(
+            nn.ConvTranspose2d(64, 2, kernel_size=4, stride=2, padding=1),
+            nn.LeakyReLU()
+        )
+        self.t_conv3_5 = nn.ConvTranspose2d(6, outputs, kernel_size=3, stride=1, padding=1)
+
+    def forward(self, x, embadding=None, return_latent=False):
+        x1 = self.conv1(x)
+        x2 = self.conv2(x1)
+        x3 = self.conv3(x2)
+        x4 = self.conv4(x3)
+
+        x5 = self.conv5(x4)
+
+        if embadding is not None:
+            # if embadding.size(1) != 512:
+            embadding = self.linear_block(embadding)
+
+            embadding_tensor = embadding.unsqueeze(-1).unsqueeze(-1)
+            embadding_tensor = embadding_tensor.expand(-1, -1, x5.size(2), x5.size(3))
+        else:
+            print("No embedding provided.")
+            embadding_tensor = torch.zeros(x5.size(0), 2048).to(device)
+            embadding_tensor = self.linear_block(embadding_tensor)
+            embadding_tensor = embadding_tensor.unsqueeze(-1).unsqueeze(-1)
+            embadding_tensor = embadding_tensor.expand(-1, -1, x5.size(2), x5.size(3))
+
+            # embadding_tensor = torch.zeros(embadding.size(0), 512, x5.size(2), x5.size(3)).to(device)
+
+        # x5 = torch.concat((embadding_tensor, x5), dim=1)
+        # x5 = self.emb(x5)
+
+        x5 += embadding_tensor
+
+        if return_latent == True:
+            return x5
+
+        x6 = self.conv6(x5)
+
+        x7 = torch.cat((x6, x4), 1)
+        x7 = self.t_conv1(x7)
+
+        x8 = torch.cat((x7, x3), 1)
+        x8 = self.t_conv2(x8)
+
+        x9 = torch.cat((x8, x2), 1)
+        x9 = self.t_conv3(x9)
+
+        x10 = torch.cat((x9, x1), 1)
+        x10 = self.t_conv4(x10)
+
+        x11 = torch.cat((x10, x), 1)
+        x11 = F.tanh(self.t_conv5(x11))
+
+        # -----------------------------------------------
+
+        x2_1 = self.conv2_1(x)
+        x2_2 = self.conv2_2(x2_1)
+        x2_3 = self.conv2_3(x2_2)
+        x2_4 = self.conv2_4(x2_3)
+
+        x2_5 = self.conv2_5(x2_4)
+
+        x2_6 = self.conv2_6(x2_5)
+
+        x2_7 = torch.cat((x2_6, x2_4), 1)
+        x2_7 = self.t_conv2_1(x2_7)
+
+        x2_8 = torch.cat((x2_7, x2_3), 1)
+        x2_8 = self.t_conv2_2(x2_8)
+
+        x2_9 = torch.cat((x2_8, x2_2), 1)
+        x2_9 = self.t_conv2_3(x2_9)
+
+        x2_10 = torch.cat((x2_9, x2_1), 1)
+        x2_10 = self.t_conv2_4(x2_10)
+
+        x2_11 = torch.cat((x2_10, x), 1)
+        x2_11 = F.tanh(self.t_conv2_5(x2_11))
+
+        x3 = torch.cat((x11, x2_11), 1)
+
+        # ------------------------------------------------------
+
+        x3_1 = self.conv3_1(x3)
+        x3_2 = self.conv3_2(x3_1)
+        x3_3 = self.conv3_3(x3_2)
+        x3_4 = self.conv3_4(x3_3)
+
+        x3_5 = self.conv3_5(x3_4)
+
+        x3_6 = self.conv3_6(x3_5)
+
+        x3_7 = torch.cat((x3_6, x3_4), 1)
+        x3_7 = self.t_conv3_1(x3_7)
+
+        x3_8 = torch.cat((x3_7, x3_3), 1)
+        x3_8 = self.t_conv3_2(x3_8)
+
+        x3_9 = torch.cat((x3_8, x3_2), 1)
+        x3_9 = self.t_conv3_3(x3_9)
+
+        x3_10 = torch.cat((x3_9, x3_1), 1)
+        x3_10 = self.t_conv3_4(x3_10)
+
+        x3_11 = torch.cat((x3_10, x3), 1)
+        res = F.tanh(self.t_conv3_5(x3_11))
+
+        return res
+
+    def predict(self, l_channel, rgb_image=None):
+        self.eval()
+
+        with torch.no_grad():
+            if rgb_image is not None:
+                ab_channels = self.forward(l_channel, embadding=rgb_image)
+            else:
+                ab_channels = self.forward(l_channel)
+
+        l_channel = l_channel.squeeze(0).permute(1, 2, 0).squeeze(2).cpu().numpy()
+        # l_channel =  l_channel.permute(1, 2, 0).cpu().numpy()
+        ab_channels = ab_channels.squeeze(0).permute(1, 2, 0).cpu().numpy()
+
+        a_channel = ab_channels[:, :, 0]
+        b_channel = ab_channels[:, :, 1]
+
+        l_channel = np.clip(l_channel * 100, 0, 100).astype(np.uint8)
+        a_channel = np.clip(a_channel * 128, -128, 127).astype(np.int8)
+        b_channel = np.clip(b_channel * 128, -128, 127).astype(np.int8)
+
+        lab_image = np.stack([l_channel, a_channel, b_channel], axis=-1).astype(np.float64)
+        rgb_image = lab2rgb(lab_image)
+
+        rgb_image = np.clip(rgb_image * 255, 0, 255).astype(np.uint8)
+
+        # rgb_image =  np.clip(rgb_image, 0, 1).astype(np.uint8)
+
+        return rgb_image
 
 
-
-
-def additional_model():
-    model = СolorizerV2()
-    model.load_state_dict(torch.load("weights/colorizer_wrong.pt", map_location=device))
-    return model
-
-def teacher_model():
-    model = СolorizerV5()
-    model.load_state_dict(torch.load("weights/colorizer_l.pt", map_location=device))
-    return model
-
-def student_model():
-    model = ColorizerV6()
-    model.load_state_dict(torch.load("weights/colorizer_s.pt", map_location=device))
-    return model
+# def additional_model():
+#     model = СolorizerV2()
+#     model.load_state_dict(torch.load("weights/colorizer_wrong.pt", map_location=device))
+#     return model
+#
+# def teacher_model():
+#     model = СolorizerV5()
+#     model.load_state_dict(torch.load("weights/colorizer_l.pt", map_location=device))
+#     return model
+#
+# def student_model():
+#     model = ColorizerV6()
+#     model.load_state_dict(torch.load("weights/colorizer_s.pt", map_location=device))
+#     return model
 
 # for 2048 as embedding
 def emb_model_1():
@@ -1266,6 +1598,11 @@ def emb_model_1():
 def emb_model_2():
     model = ColorizerV8()
     model.load_state_dict(torch.load("weights/history_in_color_v20.pt", map_location=device))
+    return model
+
+def emb_model_3():
+    model = ColorizerV9()
+    model.load_state_dict(torch.load("weights/history_in_color_v2_0.pt", map_location=device))
     return model
 
 
@@ -1296,7 +1633,7 @@ def extractor_3():
 # print(res.shape)
 
 
-model = emb_model_1()
+model = emb_model_3()
 emb_model = extractor_3()
 
 model.to(device)
