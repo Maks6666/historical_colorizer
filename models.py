@@ -1573,21 +1573,6 @@ class ColorizerV9(nn.Module):
         return rgb_image
 
 
-# def additional_model():
-#     model = СolorizerV2()
-#     model.load_state_dict(torch.load("weights/colorizer_wrong.pt", map_location=device))
-#     return model
-#
-# def teacher_model():
-#     model = СolorizerV5()
-#     model.load_state_dict(torch.load("weights/colorizer_l.pt", map_location=device))
-#     return model
-#
-# def student_model():
-#     model = ColorizerV6()
-#     model.load_state_dict(torch.load("weights/colorizer_s.pt", map_location=device))
-#     return model
-
 # for 2048 as embedding
 def emb_model_1():
     model = ColorizerV7()
@@ -1604,6 +1589,9 @@ def emb_model_3():
     model = ColorizerV9()
     model.load_state_dict(torch.load("weights/history_in_color_v2_0.pt", map_location=device))
     return model
+
+
+# ----------------------------------------------------------------------------------------------------
 
 
 # pretrained inception (emb - 2048)
