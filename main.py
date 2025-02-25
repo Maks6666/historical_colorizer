@@ -1,21 +1,16 @@
 from os import listdir
 import time
-
-from prompt_toolkit.filters import has_arg
 from skimage.color import rgb2lab
-from torch.nn.functional import embedding
-
-from models import teacher_model, student_model, additional_model, emb_model_2, extractor_1, emb_model_1, extractor_2, extractor_3
+from models import emb_model_1, extractor_1, emb_model_2, extractor_2, extractor_3, emb_model_3
 import torch
 from PIL import Image
 import os
 import numpy as np
-from skimage import color
 from torchvision import transforms
 from datasets import custom_image_transformer
 import cv2
 
-from tools import choose_file, has_arg
+from tools import choose_file
 
 
 device = "mps" if torch.backends.mps.is_available() else "cpu"
@@ -35,13 +30,14 @@ class ColorizerApp:
         ])
 
 
-
-
     def load_model(self):
         if self.model_marker == "1":
             return emb_model_1()
         elif self.model_marker == "2":
             return emb_model_2()
+        elif self.model_marker == "3":
+            return emb_model_3()
+
 
     def output_result(self):
         idx = len(os.listdir(self.dir_to_save))+1
@@ -64,24 +60,13 @@ class ColorizerApp:
             gray_img = gray_img.to(self.device)
             img = img.to(self.device)
 
-            # embedding = emd_model(gray_img, return_emb=True)
-            # if has_arg(emd_model, 'return_emb') == True:
-            #     embedding = emd_model(gray_img, return_emb=True)
-            # else:
-            #     embedding = emd_model(gray_img)
-            #
-
             try:
                 print("Embedding returned")
                 embedding = emd_model(gray_img, return_emb=True)
-            except RuntimeError:
+            except RuntimeError and TypeError:
                 embedding = emd_model(gray_img)
 
-
-
-            print("f")
             res = self.model.predict(img, embedding)
-            print("x")
 
             if len(res.shape) == 4:
                 res = res.squeeze(0)
@@ -94,8 +79,6 @@ class ColorizerApp:
 
             path = os.path.join(self.dir_to_save, f"{idx}.jpg")
 
-            # l_channel = np.clip(l_channel * 255, 0, 255).astype(np.uint8)
-
             cv2.imwrite(path, res)
 
             end = time.time()
@@ -104,12 +87,10 @@ class ColorizerApp:
 
             return res
 
-# model = first_model()
-
 root_dir = "grayscaled_images"
 image = choose_file(root_dir)
 dir_to_save = "colorized_images"
 
 
-colorizer = ColorizerApp(image, dir_to_save, model_marker="1", extractor=extractor_3)
+colorizer = ColorizerApp(image, dir_to_save, model_marker="3", extractor=extractor_3)
 colorizer.output_result()
